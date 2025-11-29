@@ -1118,6 +1118,23 @@ public class TransportSearchAction extends HandledTransportAction<SearchRequest,
                     break;
             }
         }
+
+        ActionListener<SearchResponse> finalListener = listener;
+        if (Boolean.TRUE.equals(searchRequest.includeShardInfo())) {
+            final Map<String, List<ShardId>> shardInfoMap = new HashMap<>();
+            for (SearchShardIterator shardIterator : shardIterators) {
+                for (String targetNodeId : shardIterator.getTargetNodeIds()) {
+                    final List<ShardId> shardIds = shardInfoMap.computeIfAbsent(targetNodeId, n -> new ArrayList<ShardId>());
+                    shardIds.add(shardIterator.shardId());
+                }
+            }
+
+            finalListener = ActionListener.wrap(response -> {
+                response.setShardInfo(shardInfoMap);
+                listener.onResponse(response);
+            }, listener::onFailure);
+        }
+
         final DiscoveryNodes nodes = clusterState.nodes();
         BiFunction<String, String, Transport.Connection> connectionLookup = buildConnectionLookup(
             searchRequest.getLocalClusterAlias(),
@@ -1143,7 +1160,7 @@ public class TransportSearchAction extends HandledTransportAction<SearchRequest,
             Collections.unmodifiableMap(aliasFilter),
             concreteIndexBoosts,
             indexRoutings,
-            listener,
+            finalListener,
             preFilterSearchShards,
             threadPool,
             clusters,

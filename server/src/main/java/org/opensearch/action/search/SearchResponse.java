@@ -44,6 +44,7 @@ import org.opensearch.core.common.Strings;
 import org.opensearch.core.common.io.stream.StreamInput;
 import org.opensearch.core.common.io.stream.StreamOutput;
 import org.opensearch.core.common.io.stream.Writeable;
+import org.opensearch.core.index.shard.ShardId;
 import org.opensearch.core.rest.RestStatus;
 import org.opensearch.core.xcontent.MediaTypeRegistry;
 import org.opensearch.core.xcontent.ToXContentFragment;
@@ -102,6 +103,7 @@ public class SearchResponse extends ActionResponse implements StatusToXContentOb
     private final Clusters clusters;
     private final long tookInMillis;
     private final PhaseTook phaseTook;
+    private Map<String, List<ShardId>> shardInfo;
 
     public SearchResponse(StreamInput in) throws IOException {
         super(in);
@@ -329,6 +331,14 @@ public class SearchResponse extends ActionResponse implements StatusToXContentOb
         return clusters;
     }
 
+    public void setShardInfo(Map<String, List<ShardId>> shardInfo) {
+        this.shardInfo = shardInfo;
+    }
+
+    public Map<String, List<ShardId>> getShardInfo() {
+        return shardInfo;
+    }
+
     @Override
     public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
         builder.startObject();
@@ -355,6 +365,19 @@ public class SearchResponse extends ActionResponse implements StatusToXContentOb
         if (getNumReducePhases() != 1) {
             builder.field(NUM_REDUCE_PHASES.getPreferredName(), getNumReducePhases());
         }
+        if (shardInfo != null) {
+            builder.startObject("shard_info");
+            for (Map.Entry<String, List<ShardId>> entry : shardInfo.entrySet()) {
+                String nodeId = entry.getKey();
+                builder.startArray(nodeId);
+                for (ShardId shardId : entry.getValue()) {
+                    builder.value(shardId.id());
+                }
+                builder.endArray();
+            }
+            builder.endObject();
+        }
+
         RestActions.buildBroadcastShardsHeader(
             builder,
             params,

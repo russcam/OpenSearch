@@ -128,6 +128,9 @@ public class SearchRequest extends ActionRequest implements IndicesRequest.Repla
 
     private Boolean phaseTook = null;
 
+    @Nullable
+    private Boolean includeShardInfo;
+
     public SearchRequest() {
         this.localClusterAlias = null;
         this.absoluteStartMillis = DEFAULT_ABSOLUTE_START_MILLIS;
@@ -233,6 +236,7 @@ public class SearchRequest extends ActionRequest implements IndicesRequest.Repla
         this.finalReduce = finalReduce;
         this.cancelAfterTimeInterval = searchRequest.cancelAfterTimeInterval;
         this.phaseTook = searchRequest.phaseTook;
+        this.includeShardInfo = searchRequest.includeShardInfo;
     }
 
     /**
@@ -280,6 +284,9 @@ public class SearchRequest extends ActionRequest implements IndicesRequest.Repla
         if (in.getVersion().onOrAfter(Version.V_2_12_0)) {
             phaseTook = in.readOptionalBoolean();
         }
+        if (in.getVersion().onOrAfter(Version.V_3_4_0)) {
+            includeShardInfo = in.readOptionalBoolean();
+        }
     }
 
     @Override
@@ -313,6 +320,9 @@ public class SearchRequest extends ActionRequest implements IndicesRequest.Repla
         }
         if (out.getVersion().onOrAfter(Version.V_2_12_0)) {
             out.writeOptionalBoolean(phaseTook);
+        }
+        if (out.getVersion().onOrAfter(Version.V_3_4_0)) {
+            out.writeOptionalBoolean(includeShardInfo);
         }
     }
 
@@ -750,6 +760,21 @@ public class SearchRequest extends ActionRequest implements IndicesRequest.Repla
 
     public String pipeline() {
         return pipeline;
+    }
+
+    /**
+     * Sets whether to include information on shards and nodes that participated in the search request.
+     */
+    public SearchRequest includeShardInfo(Boolean includeShardInfo) {
+        this.includeShardInfo = includeShardInfo;
+        return this;
+    }
+
+    /**
+     * Returns true if shard info should be included in the search response.
+     */
+    public Boolean includeShardInfo() {
+        return this.includeShardInfo;
     }
 
     @Override
